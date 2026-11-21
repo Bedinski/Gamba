@@ -1284,13 +1284,18 @@ main {
   position: fixed;
   inset: 0;
   z-index: 60;
+  background: rgba(5, 4, 12, 0.8);
+  backdrop-filter: blur(12px);
+}
+.inspect-scroll {
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: rgba(5, 4, 12, 0.8);
-  backdrop-filter: blur(12px);
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .inspect-body {
   display: flex;
@@ -1383,7 +1388,7 @@ main {
     grid-template-columns: repeat(4, 1fr);
     gap: 10px;
   }
-  .inspect {
+  .inspect-scroll {
     align-items: flex-start;
   }
   .inspect-body {
@@ -1441,4 +1446,29 @@ main {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
   }
+}
+
+/* Shown only if a card and all its fallback art fail to load. */
+.card-missing {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12%;
+  text-align: center;
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: var(--ink);
+  background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--tier) 45%, #1a1430), #0b0916 75%);
+}
+.card-missing small {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.7em;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--tier);
 }

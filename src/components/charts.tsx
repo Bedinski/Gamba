@@ -139,7 +139,7 @@ export function NetLineChart({ points, height = 260 }: { points: NetPoint[]; hei
               <circle cx={sx(hp.i)} cy={sy(hp.net)} r={5} fill={hp.net >= 0 ? C.good : C.bad} stroke={C.surface} strokeWidth={2} />
             </g>
           )}
-          <rect x={m.l} y={m.t} width={iw} height={ih} fill="transparent" onPointerMove={onMove} onPointerLeave={() => setHover(null)} style={{ cursor: 'crosshair' }} />
+          <rect x={m.l} y={m.t} width={iw} height={ih} fill="transparent" onPointerDown={onMove} onPointerMove={onMove} onPointerLeave={(e) => e.pointerType === 'mouse' && setHover(null)} style={{ cursor: 'crosshair', touchAction: 'pan-y' }} />
         </svg>
       )}
       {hp && (
@@ -236,7 +236,7 @@ export function Histogram({ bins, marker, markerLabel, height = 220 }: { bins: {
             return (
               <g key={i}>
                 {d && <path d={d} fill={C.seq} opacity={hover === null || hover === i ? 1 : 0.45} />}
-                <rect x={sx(b.from)} y={m.t} width={bw} height={ih} fill="transparent" onPointerEnter={() => setHover(i)} onPointerLeave={() => setHover(null)} />
+                <rect x={sx(b.from)} y={m.t} width={bw} height={ih} fill="transparent" onPointerEnter={() => setHover(i)} onPointerDown={() => setHover(i)} onPointerLeave={(e) => e.pointerType === 'mouse' && setHover(null)} />
               </g>
             );
           })}

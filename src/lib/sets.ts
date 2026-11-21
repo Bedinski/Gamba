@@ -1,6 +1,6 @@
 import setsJson from '../data/sets.json';
 import type { Card, SetInfo, Tier } from './types';
-import { buildPools, type Pools } from './packs';
+import { buildPools, TIER_RANK, type Pools } from './packs';
 import { validateCards, validatePools } from './validate';
 
 export const SETS = setsJson as SetInfo[];
@@ -41,7 +41,7 @@ export function loadSet(id: string): Promise<LoadedSet> {
     p = (async () => {
       const info = SETS.find((s) => s.id === id);
       if (!info) throw new Error(`Unknown set ${id}`);
-      const cards = await loadRaw(id);
+      const cards = withFallbackImages(await loadRaw(id));
       const fallbackRunes = cards.some((c) => c.tier === 'rune') ? [] : await loadRaw('OGN').then((c) => c.filter((x) => x.tier === 'rune' || x.tier === 'altRune'));
       const pools = buildPools(cards, fallbackRunes);
       validatePools(pools, id);
@@ -70,4 +70,28 @@ export function coverCards(set: LoadedSet, n = 3): Card[] {
 export function IMG(url: string, w: number): string {
   if (url.includes('tcgplayer-cdn')) return `${url}_${w <= 200 ? '200w' : w <= 400 ? '400w' : 'in_1000x1000'}.jpg`;
   return `${url}?accountingTag=RB&w=${w}&fm=webp&q=85`;
+}
+
+/** "Kayn, Unleashed (Heartsteel Signature)" -> "Kayn, Unleashed"; "Mind Rune (R03a)" -> "Mind Rune". */
+export function baseName(name: string): string {
+  return name.replace(/\s*\([^)]*\)\s*$/, '').trim();
+}
+
+/**
+ * TCGplayer sometimes lists a card before its scan is uploaded (new signatures, alt runes).
+ * Give every card its same-name siblings' art as fallbacks, closest variant first.
+ */
+export function withFallbackImages(cards: Card[]): Card[] {
+  const byName = new Map<string, Card[]>();
+  for (const c of cards) {
+    const k = baseName(c.name);
+    byName.set(k, [...(byName.get(k) ?? []), c]);
+  }
+  return cards.map((c) => {
+    const rank = TIER_RANK[c.tier];
+    const siblings = (byName.get(baseName(c.name)) ?? [])
+      .filter((o) => o.id !== c.id && o.image !== c.image)
+      .sort((a, b) => Math.abs(TIER_RANK[a.tier] - rank) - Math.abs(TIER_RANK[b.tier] - rank) || TIER_RANK[b.tier] - TIER_RANK[a.tier]);
+    return siblings.length ? { ...c, fallbackImages: siblings.map((o) => o.image) } : c;
+  });
 }

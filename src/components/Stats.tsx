@@ -155,10 +155,10 @@ export function StatsView({ sets, ledger, onBack, onOpen, onReset, onInspect }: 
                     <thead>
                       <tr>
                         <th>When</th>
-                        <th>Set</th>
+                        <th className="hide-sm">Set</th>
                         <th>Top card</th>
                         <th className="num">Value</th>
-                        <th className="num">Cost</th>
+                        <th className="num hide-sm">Cost</th>
                         <th className="num">Net</th>
                       </tr>
                     </thead>
@@ -171,10 +171,10 @@ export function StatsView({ sets, ledger, onBack, onOpen, onReset, onInspect }: 
                           return (
                             <tr key={`${e.t}-${i}`}>
                               <td>{new Date(e.t).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</td>
-                              <td>{setName(e.set)}</td>
+                              <td className="hide-sm">{setName(e.set)}</td>
                               <td className="ellipsis">{findCard(e.set, e.best.id)?.name ?? '—'}</td>
                               <td className="num">{money(e.value)}</td>
-                              <td className="num muted">{money(e.cost)}</td>
+                              <td className="num muted hide-sm">{money(e.cost)}</td>
                               <td className={`num ${net >= 0 ? 'good' : 'bad'}`}>
                                 {net >= 0 ? '▲' : '▼'} {signedMoney(net)}
                               </td>

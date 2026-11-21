@@ -1,6 +1,6 @@
 import { vars } from '../lib/css';
 import { motion } from 'framer-motion';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { THEMES, type LoadedSet } from '../lib/sets';
 import { ownedCount, type Collection } from '../lib/collection';
 import { TIER_RANK } from '../lib/packs';
@@ -27,6 +27,16 @@ export function CollectionView({ sets, setId, collection, onSet, onBack, onOpen,
   const owned = collection.cards[setId] ?? {};
   const [filter, setFilter] = useState<Filter>('all');
   const [sort, setSort] = useState<'number' | 'value'>('number');
+  const tabsRef = useRef<HTMLDivElement>(null);
+  // On narrow screens the set tabs scroll sideways; keep the active one in view.
+  useEffect(() => {
+    const tabs = tabsRef.current;
+    const active = tabs?.querySelector<HTMLElement>('.tab.active');
+    if (!tabs || !active) return;
+    const t = tabs.getBoundingClientRect();
+    const a = active.getBoundingClientRect();
+    tabs.scrollTo({ left: tabs.scrollLeft + a.left - t.left - (t.width - a.width) / 2, behavior: 'smooth' });
+  }, [setId]);
   const tiers = useMemo(() => [...new Set(set.cards.map((c) => c.tier))].sort((a, b) => TIER_RANK[a] - TIER_RANK[b]), [set]);
   // Rares and up only ever come foil out of a pack, so value them at the foil price.
   const priceOfCard = (c: (typeof set.cards)[number]) => cardPrice(setId, c.id, TIER_RANK[c.tier] >= TIER_RANK.rare);
@@ -48,7 +58,7 @@ export function CollectionView({ sets, setId, collection, onSet, onBack, onOpen,
         <button className="ghost" onClick={onBack}>
           ← Sets
         </button>
-        <div className="tabs">
+        <div className="tabs" ref={tabsRef}>
           {sets.map((s) => (
             <button key={s.info.id} className={`tab ${s.info.id === setId ? 'active' : ''}`} onClick={() => onSet(s.info.id)}>
               {s.info.name}

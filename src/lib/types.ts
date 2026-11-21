@@ -29,6 +29,8 @@ export interface Card {
   flavour: string | null;
   /** TCGplayer product id, for sets sourced from TCGplayer's catalog. */
   tcgplayerId?: number;
+  /** Same-name variants whose art can stand in if this card's image is not published yet. */
+  fallbackImages?: string[];
 }
 
 export interface SetInfo {

@@ -94,8 +94,9 @@ export function BulkResults({ setId, packs, newIds, onInspect }: BulkProps) {
   const priced = useMemo(() => packs.map((p) => priceOf(setId, p)), [setId, packs]);
   const total = priced.reduce((a, p) => a + p.value, 0);
   const cost = priced.reduce((a, p) => a + p.cost, 0);
-  const maxPack = Math.max(...priced.map((p) => p.value), priced[0]?.cost ?? 1);
   const [shown, setShown] = useState(0);
+  // Scale to the packs revealed so far, so the chart never hints at a hit that hasn't landed yet.
+  const maxPack = Math.max(priced[0]?.cost ?? 1, ...priced.slice(0, shown).map((p) => p.value));
   const barRefs = useRef<(HTMLDivElement | null)[]>([]);
   const heroRef = useRef<HTMLDivElement>(null);
   const done = shown >= packs.length;
@@ -142,7 +143,7 @@ export function BulkResults({ setId, packs, newIds, onInspect }: BulkProps) {
           return (
             <div key={i} className="bulk-col" role="listitem" aria-label={`Pack ${i + 1}: ${money(p.value)}`}>
               <div className="bulk-bar-area">
-                <div className="bulk-cost-line" style={{ bottom: `${(p.cost / maxPack) * 100}%` }} />
+                {done && <motion.div className="bulk-cost-line" style={{ bottom: `${(p.cost / maxPack) * 100}%` }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }} />}
                 <motion.div
                   ref={(el) => (barRefs.current[i] = el)}
                   className={`bulk-bar ${win ? 'win' : ''}`}

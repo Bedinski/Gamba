@@ -61,8 +61,10 @@ export function Opening({ set, collection, onRecord, onExit, onCollection, onSta
 
   useEffect(() => {
     for (const p of pack) {
-      const img = new Image();
-      img.src = IMG(p.card.image, 500);
+      for (const url of [p.card.image, ...(p.card.fallbackImages ?? []).slice(0, 1)]) {
+        const img = new Image();
+        img.src = IMG(url, 500);
+      }
     }
   }, [pack]);
 

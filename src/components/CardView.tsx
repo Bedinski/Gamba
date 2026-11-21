@@ -1,5 +1,5 @@
 import { vars } from '../lib/css';
-import { useRef, type CSSProperties, type PointerEvent } from 'react';
+import { useRef, useState, type CSSProperties, type PointerEvent } from 'react';
 import type { Card } from '../lib/types';
 import { IMG } from '../lib/sets';
 import { TIER_STYLE } from '../lib/rarity';
@@ -23,6 +23,11 @@ export function CardView({ card, foil, res = 500, tilt, shimmer, className = '',
   const ref = useRef<HTMLDivElement>(null);
   const rank = TIER_RANK[card.tier];
   const holo = foil || rank >= TIER_RANK.rare;
+  // Walk through fallback art when an image is missing; reset whenever the card changes.
+  const [failed, setFailed] = useState({ id: card.id, n: 0 });
+  const attempt = failed.id === card.id ? failed.n : 0;
+  const sources = [card.image, ...(card.fallbackImages ?? [])];
+  const src = sources[attempt];
 
   const onMove = (e: PointerEvent) => {
     const el = ref.current;
@@ -54,14 +59,23 @@ export function CardView({ card, foil, res = 500, tilt, shimmer, className = '',
       onPointerLeave={onLeave}
     >
       <div className="card-inner">
-        <img
-          className={card.landscape ? 'landscape' : ''}
-          src={IMG(card.image, res)}
-          alt={card.name}
-          draggable={false}
-          loading="lazy"
-          decoding="async"
-        />
+        {src ? (
+          <img
+            key={src}
+            className={card.landscape ? 'landscape' : ''}
+            src={IMG(src, res)}
+            alt={card.name}
+            draggable={false}
+            loading="lazy"
+            decoding="async"
+            onError={() => setFailed({ id: card.id, n: attempt + 1 })}
+          />
+        ) : (
+          <div className="card-missing">
+            <span>{card.name}</span>
+            <small>{TIER_STYLE[card.tier].label}</small>
+          </div>
+        )}
         {holo && <div className="foil" />}
         {rank >= TIER_RANK.altArt && <div className="sparkle" />}
         <div className="glare" />
