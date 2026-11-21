@@ -1,0 +1,22 @@
+[
+  {
+    "id": "OGN",
+    "name": "Origins",
+    "releasedOn": "2025-10-31"
+  },
+  {
+    "id": "SFD",
+    "name": "Spiritforged",
+    "releasedOn": "2026-02-13"
+  },
+  {
+    "id": "UNL",
+    "name": "Unleashed",
+    "releasedOn": "2026-05-08"
+  },
+  {
+    "id": "VEN",
+    "name": "Vendetta",
+    "releasedOn": "2026-07-31"
+  }
+]
