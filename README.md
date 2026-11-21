@@ -1,5 +1,7 @@
 # Riftbound Pack Opener
 
+**Play it:** https://bedinski.github.io/Gamba/
+
 A virtual booster-pack opening experience for the Riftbound TCG: pick a set, choose a pack,
 swipe to tear it open, and flip through your pulls one card at a time.
 
@@ -8,8 +10,14 @@ npm install
 npm run dev      # http://localhost:5173
 npm test         # unit tests (pack collation, odds, validation, collection)
 npm run build    # production build in dist/
+npm run preview  # serve the production build at http://localhost:4173/Gamba/
 npm run data     # re-fetch card data from the Riftcodex API into src/data/
 ```
+
+## Deployment
+
+Every push to `main` runs the tests, builds, and deploys to GitHub Pages via
+`.github/workflows/deploy.yml`.
 
 ## Sets
 
