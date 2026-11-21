@@ -27,6 +27,8 @@ export interface Card {
   landscape: boolean;
   text: string | null;
   flavour: string | null;
+  /** TCGplayer product id, for sets sourced from TCGplayer's catalog. */
+  tcgplayerId?: number;
 }
 
 export interface SetInfo {

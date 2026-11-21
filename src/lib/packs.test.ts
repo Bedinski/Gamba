@@ -158,7 +158,7 @@ describe('real set data', () => {
   });
 
   it('includes every booster set', () => {
-    expect(SETS.map((s) => s.id)).toEqual(['OGN', 'SFD', 'UNL', 'VEN']);
+    expect(SETS.map((s) => s.id)).toEqual(['OGN', 'SFD', 'UNL', 'VEN', 'RAD']);
   });
 
   for (const s of SETS) {

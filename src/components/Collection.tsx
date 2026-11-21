@@ -7,6 +7,8 @@ import { TIER_RANK } from '../lib/packs';
 import { TIER_STYLE } from '../lib/rarity';
 import type { PulledCard, Tier } from '../lib/types';
 import { CardView } from './CardView';
+import { PriceTag } from './Money';
+import { cardPrice, money } from '../lib/prices';
 
 interface Props {
   sets: LoadedSet[];
@@ -24,13 +26,19 @@ export function CollectionView({ sets, setId, collection, onSet, onBack, onOpen,
   const set = sets.find((s) => s.info.id === setId)!;
   const owned = collection.cards[setId] ?? {};
   const [filter, setFilter] = useState<Filter>('all');
+  const [sort, setSort] = useState<'number' | 'value'>('number');
   const tiers = useMemo(() => [...new Set(set.cards.map((c) => c.tier))].sort((a, b) => TIER_RANK[a] - TIER_RANK[b]), [set]);
-  const cards = set.cards.filter((c) => {
-    if (filter === 'all') return true;
-    if (filter === 'owned') return owned[c.id];
-    if (filter === 'missing') return !owned[c.id];
-    return c.tier === filter;
-  });
+  // Rares and up only ever come foil out of a pack, so value them at the foil price.
+  const priceOfCard = (c: (typeof set.cards)[number]) => cardPrice(setId, c.id, TIER_RANK[c.tier] >= TIER_RANK.rare);
+  const worth = set.cards.reduce((a, c) => a + (owned[c.id] ?? 0) * priceOfCard(c), 0);
+  const cards = set.cards
+    .filter((c) => {
+      if (filter === 'all') return true;
+      if (filter === 'owned') return owned[c.id];
+      if (filter === 'missing') return !owned[c.id];
+      return c.tier === filter;
+    })
+    .sort((a, b) => (sort === 'value' ? priceOfCard(b) - priceOfCard(a) : 0));
   const count = ownedCount(collection, setId);
   const theme = THEMES[setId];
 
@@ -60,7 +68,13 @@ export function CollectionView({ sets, setId, collection, onSet, onBack, onOpen,
         <p className="hint">
           {count} / {set.cards.length} cards · {collection.packsOpened[setId] ?? 0} packs opened
         </p>
+        <p className="collection-worth">
+          Collection value <b>{money(worth)}</b>
+        </p>
         <div className="filters">
+          <button className={`chip sort ${sort === 'value' ? 'active' : ''}`} onClick={() => setSort(sort === 'value' ? 'number' : 'value')}>
+            {sort === 'value' ? '💰 Sorted by value' : '# Sorted by number'}
+          </button>
           {(['all', 'owned', 'missing'] as Filter[]).concat(tiers).map((f) => (
             <button
               key={f}
@@ -90,6 +104,7 @@ export function CollectionView({ sets, setId, collection, onSet, onBack, onOpen,
             >
               <CardView card={c} res={300} dim={!n} />
               {n > 1 && <span className="count">×{n}</span>}
+              {(n > 0 || sort === 'value') && <PriceTag value={priceOfCard(c)} className="on-card small" />}
               <span className="num">#{c.number}</span>
             </motion.button>
           );

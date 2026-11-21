@@ -10,16 +10,17 @@ import { Home } from './components/Home';
 import { Opening } from './components/Opening';
 import { CollectionView } from './components/Collection';
 import { Inspect } from './components/Inspect';
+import { StatsView } from './components/Stats';
 
-type Screen = { name: 'home' } | { name: 'open'; setId: string; nonce: number } | { name: 'collection'; setId: string };
+type Screen = { name: 'home' } | { name: 'open'; setId: string; nonce: number } | { name: 'collection'; setId: string } | { name: 'stats'; from?: string };
 
 export default function App() {
   const [sets, setSets] = useState<LoadedSet[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [screen, setScreen] = useState<Screen>({ name: 'home' });
-  const [inspect, setInspect] = useState<{ pull: PulledCard; count?: number } | null>(null);
+  const [inspect, setInspect] = useState<{ pull: PulledCard; setId: string; count?: number } | null>(null);
   const [muted, setMutedState] = useState(isMuted());
-  const { collection, record } = useCollection();
+  const { collection, ledger, record, resetLedger } = useCollection();
   const canvas = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -34,11 +35,11 @@ export default function App() {
     return () => fx.detach();
   }, []);
 
-  const activeSet = screen.name === 'home' ? null : screen.setId;
+  const activeSet = screen.name === 'home' || screen.name === 'stats' ? null : screen.setId;
   const colors = activeSet ? THEMES[activeSet].colors : ['#241a4a', '#d9a441', '#9a7bff'];
 
   useEffect(() => {
-    if (screen.name !== 'open') fx.setAmbient(colors[2], 0.35);
+    if (screen.name !== 'open') fx.setAmbient(colors[2], screen.name === 'stats' ? 0.08 : 0.35);
   }, [screen.name, colors[2]]);
 
   useEffect(() => {
@@ -46,6 +47,8 @@ export default function App() {
   }, [screen]);
 
   const open = (setId: string) => setScreen({ name: 'open', setId, nonce: Date.now() });
+  const stats = () => setScreen({ name: 'stats' });
+  const setOfCard = (cardId: string) => sets?.find((s) => s.cards.some((c) => c.id === cardId))?.info.id ?? '';
 
   return (
     <div className="app" style={vars({ '--c0': colors[0], '--c1': colors[1], '--c2': colors[2] })}>
@@ -79,7 +82,19 @@ export default function App() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
             >
-              {screen.name === 'home' && <Home sets={sets} collection={collection} onOpen={open} onCollection={(setId) => setScreen({ name: 'collection', setId })} />}
+              {screen.name === 'home' && (
+                <Home sets={sets} collection={collection} ledger={ledger} onOpen={open} onStats={stats} onCollection={(setId) => setScreen({ name: 'collection', setId })} />
+              )}
+              {screen.name === 'stats' && (
+                <StatsView
+                  sets={sets}
+                  ledger={ledger}
+                  onBack={() => setScreen({ name: 'home' })}
+                  onOpen={open}
+                  onReset={resetLedger}
+                  onInspect={(pull) => setInspect({ pull, setId: setOfCard(pull.card.id), count: collection.cards[setOfCard(pull.card.id)]?.[pull.card.id] })}
+                />
+              )}
               {screen.name === 'open' && (
                 <Opening
                   set={sets.find((s) => s.info.id === screen.setId)!}
@@ -87,7 +102,8 @@ export default function App() {
                   onRecord={record}
                   onExit={() => setScreen({ name: 'home' })}
                   onCollection={() => setScreen({ name: 'collection', setId: screen.setId })}
-                  onInspect={(pull) => setInspect({ pull, count: collection.cards[screen.setId]?.[pull.card.id] })}
+                  onStats={stats}
+                  onInspect={(pull) => setInspect({ pull, setId: screen.setId, count: collection.cards[screen.setId]?.[pull.card.id] })}
                 />
               )}
               {screen.name === 'collection' && (
@@ -98,7 +114,7 @@ export default function App() {
                   onSet={(setId) => setScreen({ name: 'collection', setId })}
                   onBack={() => setScreen({ name: 'home' })}
                   onOpen={() => open(screen.setId)}
-                  onInspect={(pull, count) => setInspect({ pull, count })}
+                  onInspect={(pull, count) => setInspect({ pull, setId: screen.setId, count })}
                 />
               )}
             </motion.div>
@@ -106,7 +122,7 @@ export default function App() {
         )}
       </main>
 
-      <AnimatePresence>{inspect && <Inspect key="inspect" pull={inspect.pull} count={inspect.count} onClose={() => setInspect(null)} />}</AnimatePresence>
+      <AnimatePresence>{inspect && <Inspect key="inspect" pull={inspect.pull} setId={inspect.setId} count={inspect.count} onClose={() => setInspect(null)} />}</AnimatePresence>
 
       <button
         className="mute"
@@ -120,7 +136,7 @@ export default function App() {
         {muted ? '🔇' : '🔊'}
       </button>
 
-      <footer className="disclaimer">Fan-made simulator · Not affiliated with Riot Games · Card data via Riftcodex · Card art © Riot Games</footer>
+      <footer className="disclaimer">Fan-made simulator · Not affiliated with Riot Games · Card data via Riftcodex &amp; TCGplayer · Prices are TCGplayer market prices · Card art © Riot Games</footer>
     </div>
   );
 }

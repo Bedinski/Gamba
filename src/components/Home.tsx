@@ -4,16 +4,21 @@ import { coverCards, THEMES, type LoadedSet } from '../lib/sets';
 import { ownedCount, type Collection } from '../lib/collection';
 import { PackArt } from './PackArt';
 import { sfx } from '../lib/sound';
+import { computeStats, type LedgerEntry } from '../lib/ledger';
+import { money, packPrice, signedMoney, signedPct } from '../lib/prices';
 
 interface Props {
   sets: LoadedSet[];
   collection: Collection;
+  ledger: LedgerEntry[];
   onOpen: (id: string) => void;
+  onStats: () => void;
   onCollection: (id: string) => void;
 }
 
-export function Home({ sets, collection, onOpen, onCollection }: Props) {
-  const totalPacks = Object.values(collection.packsOpened).reduce((a, b) => a + b, 0);
+export function Home({ sets, collection, ledger, onOpen, onStats, onCollection }: Props) {
+  const stats = computeStats(ledger);
+  const win = stats.net >= 0;
   return (
     <div className="home">
       <motion.header className="hero" initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
@@ -23,7 +28,18 @@ export function Home({ sets, collection, onOpen, onCollection }: Props) {
           <span className="title-sub">Pack Opening</span>
         </h1>
         <p className="tagline">Choose a set. Tear it open. Chase the rift.</p>
-        {totalPacks > 0 && <p className="stat">{totalPacks.toLocaleString()} packs opened</p>}
+        {stats.packs > 0 && (
+          <motion.button className={`pl-strip ${win ? 'win' : 'loss'}`} onClick={onStats} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+            <span className="pl-net">
+              {win ? '▲' : '▼'} {signedMoney(stats.net)}
+            </span>
+            <span className="pl-sep" />
+            <span>{signedPct(stats.roi)} ROI</span>
+            <span className="pl-sep" />
+            <span>{stats.packs.toLocaleString()} packs</span>
+            <span className="pl-go">Stats →</span>
+          </motion.button>
+        )}
       </motion.header>
 
       <div className="set-row">
@@ -58,6 +74,9 @@ export function Home({ sets, collection, onOpen, onCollection }: Props) {
               <div className="set-info">
                 <h3>{s.info.name}</h3>
                 <p className="set-tag">{theme.tagline}</p>
+                <p className="set-price">
+                  <b>{money(packPrice(s.info.id))}</b> / pack
+                </p>
                 <div className="progress" title={`${owned} of ${s.cards.length} cards collected`}>
                   <div className="progress-bar" style={{ width: `${pct}%` }} />
                 </div>

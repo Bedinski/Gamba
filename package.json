@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "data": "node scripts/build-data.mjs"
+    "data": "node scripts/build-data.mjs",
+    "prices": "node scripts/fetch-prices.mjs"
   },
   "dependencies": {
     "framer-motion": "^11.11.17",

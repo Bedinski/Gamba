@@ -4,8 +4,9 @@ import { useEffect } from 'react';
 import type { PulledCard } from '../lib/types';
 import { TIER_STYLE } from '../lib/rarity';
 import { CardView } from './CardView';
+import { cardPrice, money, tcgplayerUrl } from '../lib/prices';
 
-export function Inspect({ pull, count, onClose }: { pull: PulledCard; count?: number; onClose: () => void }) {
+export function Inspect({ pull, setId, count, onClose }: { pull: PulledCard; setId: string; count?: number; onClose: () => void }) {
   const { card } = pull;
   const style = TIER_STYLE[card.tier];
 
@@ -37,6 +38,21 @@ export function Inspect({ pull, count, onClose }: { pull: PulledCard; count?: nu
           </p>
           {card.text && <p className="rules">{card.text.replace(/\)(?=\S)/g, ') ')}</p>}
           {card.flavour && <p className="flavour">“{card.flavour}”</p>}
+          <div className="inspect-prices">
+            <div>
+              <span className="ph-label">Market</span>
+              <span className="inspect-price">{money(cardPrice(setId, card.id, false))}</span>
+            </div>
+            <div>
+              <span className="ph-label">Foil</span>
+              <span className="inspect-price">{money(cardPrice(setId, card.id, true))}</span>
+            </div>
+            {tcgplayerUrl(setId, card.id) && (
+              <a className="link" href={tcgplayerUrl(setId, card.id)!} target="_blank" rel="noopener noreferrer">
+                View on TCGplayer ↗
+              </a>
+            )}
+          </div>
           {card.artist && <p className="meta">Illustrated by {card.artist}</p>}
           {count !== undefined && <p className="meta">Copies owned: {count}</p>}
           <button className="secondary" onClick={onClose}>

@@ -1,33 +1,41 @@
 import { useCallback, useEffect, useState } from 'react';
 import { addPack, parseCollection, type Collection } from './collection';
+import { appendEntry, entryFor, parseLedger, type LedgerEntry } from './ledger';
 import type { PulledCard } from './types';
 
 const KEY = 'rb-collection-v1';
+const LEDGER_KEY = 'rb-ledger-v1';
 
-function read(): Collection {
+function read<T>(key: string, parse: (raw: string | null) => T): T {
   try {
-    return parseCollection(localStorage.getItem(KEY));
+    return parse(localStorage.getItem(key));
   } catch {
-    return parseCollection(null);
+    return parse(null);
+  }
+}
+
+function write(key: string, value: unknown) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    /* storage full or unavailable — state lives in memory only */
   }
 }
 
 export function useCollection() {
-  const [collection, setCollection] = useState<Collection>(read);
+  const [collection, setCollection] = useState<Collection>(() => read(KEY, parseCollection));
+  const [ledger, setLedger] = useState<LedgerEntry[]>(() => read(LEDGER_KEY, parseLedger));
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(KEY, JSON.stringify(collection));
-    } catch {
-      /* storage full or unavailable — collection lives in memory only */
-    }
-  }, [collection]);
+  useEffect(() => write(KEY, collection), [collection]);
+  useEffect(() => write(LEDGER_KEY, ledger), [ledger]);
 
+  /** Add a pack to the collection and the profit ledger (priced at today's market). */
   const record = useCallback((setId: string, pack: PulledCard[]) => {
     setCollection((c) => addPack(c, setId, pack));
+    setLedger((l) => appendEntry(l, entryFor(setId, pack)));
   }, []);
 
-  const reset = useCallback(() => setCollection(parseCollection(null)), []);
+  const resetLedger = useCallback(() => setLedger([]), []);
 
-  return { collection, record, reset };
+  return { collection, ledger, record, resetLedger };
 }

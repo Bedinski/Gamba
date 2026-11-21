@@ -137,4 +137,36 @@ export const sfx = {
   tap() {
     tone(880, 0.08, 'sine', 0.04);
   },
+  /** Bright coin "ting" for a valuable card. */
+  coin() {
+    tone(1975.5, 0.18, 'square', 0.025);
+    tone(2637, 0.35, 'sine', 0.07, 0.06);
+  },
+  /** Cash-register flourish when a pack crosses into profit. */
+  profit() {
+    const c = ac();
+    if (!c) return;
+    const n = noise(c, 0.08);
+    const f = c.createBiquadFilter();
+    f.type = 'highpass';
+    f.frequency.value = 3000;
+    const g = c.createGain();
+    env(c, g, 0.12, 0.002, 0.08);
+    n.connect(f).connect(g).connect(c.destination);
+    n.start();
+    [1318.5, 1568, 2093, 2637].forEach((fq, i) => tone(fq, 0.5, 'triangle', 0.06, 0.05 + i * 0.07));
+  },
+  /** Big jackpot fanfare. */
+  jackpot() {
+    [523.25, 659.25, 783.99, 1046.5, 1318.5, 1568].forEach((fq, i) => {
+      tone(fq, 1.2, 'triangle', 0.07, i * 0.09);
+      tone(fq * 2, 0.8, 'sine', 0.025, i * 0.09);
+    });
+    tone(55, 1.8, 'sine', 0.35);
+  },
+  /** Soft descending tone for a losing pack. */
+  miss() {
+    tone(392, 0.25, 'sine', 0.05);
+    tone(293.66, 0.45, 'sine', 0.05, 0.12);
+  },
 };

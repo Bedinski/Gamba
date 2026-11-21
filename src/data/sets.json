@@ -18,5 +18,10 @@
     "id": "VEN",
     "name": "Vendetta",
     "releasedOn": "2026-07-31"
+  },
+  {
+    "id": "RAD",
+    "name": "Radiance",
+    "releasedOn": "2026-10-23"
   }
 ]

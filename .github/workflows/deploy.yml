@@ -24,6 +24,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Fresh market prices; if the price source is down, the committed prices.json is used.
+      - name: Refresh prices
+        run: npm run prices
+        continue-on-error: true
       - run: npm test
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3

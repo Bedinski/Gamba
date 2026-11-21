@@ -10,12 +10,20 @@ import { centerOf, fx } from '../lib/fx';
 import { sfx } from '../lib/sound';
 import { CardBack, CardView } from './CardView';
 import { PackArt } from './PackArt';
+import { packPrice, pullPrice, money } from '../lib/prices';
+import { BIG_HIT_VALUE, HIT_VALUE, JACKPOT_VALUE } from '../lib/hype';
+import { PriceTag, ValueMeter } from './Money';
+import { BulkResults, Summary } from './Results';
 
 const FLING = {
-  exit: (d: number) => ({ x: d * 700, y: -120, rotate: d * 28, opacity: 0, transition: { duration: 0.42, ease: [0.3, 0, 0.6, 1] } }),
+  // pointerEvents: a card flying away must not swallow quick taps meant for the next one.
+  exit: (d: number) => ({ x: d * 700, y: -120, rotate: d * 28, opacity: 0, pointerEvents: 'none' as const, transition: { duration: 0.42, ease: [0.3, 0, 0.6, 1] } }),
 };
 
-type Phase = 'choose' | 'ready' | 'tearing' | 'reveal' | 'summary';
+type Phase = 'choose' | 'ready' | 'tearing' | 'reveal' | 'summary' | 'bulk';
+
+export const BULK_COUNT = 10;
+const GOLD = ['#ffe066', '#ffd27a', '#fff3c8', '#ffffff'];
 
 interface Props {
   set: LoadedSet;
@@ -23,6 +31,7 @@ interface Props {
   onRecord: (setId: string, pack: PulledCard[]) => void;
   onExit: () => void;
   onCollection: () => void;
+  onStats: () => void;
   onInspect: (p: PulledCard) => void;
 }
 
@@ -39,8 +48,9 @@ function tierOfBest(pack: PulledCard[]): Tier {
   return pack.reduce((best, p) => (rankOf(p) > TIER_RANK[best] ? p.card.tier : best), pack[0].card.tier);
 }
 
-export function Opening({ set, collection, onRecord, onExit, onCollection, onInspect }: Props) {
+export function Opening({ set, collection, onRecord, onExit, onCollection, onStats, onInspect }: Props) {
   const [pack, setPack] = useState<PulledCard[]>(() => roll(set));
+  const [bulk, setBulk] = useState<PulledCard[][]>([]);
   const [phase, setPhase] = useState<Phase>('choose');
   const [chosen, setChosen] = useState(0);
   const [newIds, setNewIds] = useState<Set<string>>(new Set());
@@ -89,6 +99,33 @@ export function Opening({ set, collection, onRecord, onExit, onCollection, onIns
     setPhase('choose');
   };
 
+  const ripBulk = () => {
+    const packs = Array.from({ length: BULK_COUNT }, () => roll(set));
+    setNewIds(newCardIds(collection, set.info.id, packs.flat()));
+    for (const p of packs) onRecord(set.info.id, p);
+    sfx.tear();
+    window.setTimeout(() => sfx.tear(), 120);
+    setFlash((f) => f + 1);
+    setShake((s) => s + 1);
+    setBulk(packs);
+    setPhase('bulk');
+  };
+
+  const cost = packPrice(set.info.id);
+  const actions = (
+    <motion.div className="actions" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0, transition: { delay: 1.6 } }}>
+      <button className="primary" onClick={again}>
+        Open Another
+      </button>
+      <button className="secondary bolt" onClick={ripBulk}>
+        ⚡ Rip {BULK_COUNT} · {money(cost * BULK_COUNT)}
+      </button>
+      <button className="secondary" onClick={onStats}>
+        📈 Stats
+      </button>
+    </motion.div>
+  );
+
   return (
     <div className={`stage ${shake ? 'shake-' + (shake % 2) : ''}`}>
       <header className="topbar">
@@ -98,9 +135,14 @@ export function Opening({ set, collection, onRecord, onExit, onCollection, onIns
         <div className="topbar-title">
           <span>{set.info.name}</span>
         </div>
-        <button className="ghost" onClick={onCollection}>
-          Collection
-        </button>
+        <div className="topbar-actions">
+          <button className="ghost" onClick={onStats}>
+            Stats
+          </button>
+          <button className="ghost" onClick={onCollection}>
+            Collection
+          </button>
+        </div>
       </header>
 
       <AnimatePresence mode="wait">
@@ -132,7 +174,12 @@ export function Opening({ set, collection, onRecord, onExit, onCollection, onIns
                 </motion.button>
               ))}
             </div>
-            <p className="hint">7 Commons · 3 Uncommons · 1 Foil · 2 Rare or better · 1 Rune</p>
+            <p className="hint">
+              7 Commons · 3 Uncommons · 1 Foil · 2 Rare or better · 1 Rune · <b className="gold">{money(cost)}</b> per pack
+            </p>
+            <button className="secondary bolt" onClick={ripBulk}>
+              ⚡ Rip {BULK_COUNT} packs at once · {money(cost * BULK_COUNT)}
+            </button>
           </motion.div>
         )}
 
@@ -144,21 +191,21 @@ export function Opening({ set, collection, onRecord, onExit, onCollection, onIns
 
         {phase === 'reveal' && (
           <motion.div key="reveal" className="reveal" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <RevealStack pack={pack} newIds={newIds} onDone={() => setPhase('summary')} onShake={() => setShake((s) => s + 1)} onFlash={() => setFlash((f) => f + 1)} />
+            <RevealStack setId={set.info.id} pack={pack} newIds={newIds} onDone={() => setPhase('summary')} onShake={() => setShake((s) => s + 1)} onFlash={() => setFlash((f) => f + 1)} />
           </motion.div>
         )}
 
         {phase === 'summary' && (
           <motion.div key="summary" className="summary" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <Summary pack={pack} newIds={newIds} onInspect={onInspect} />
-            <motion.div className="actions" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0, transition: { delay: 0.9 } }}>
-              <button className="primary" onClick={again}>
-                Open Another
-              </button>
-              <button className="secondary" onClick={onCollection}>
-                View Collection
-              </button>
-            </motion.div>
+            <Summary setId={set.info.id} pack={pack} newIds={newIds} onInspect={onInspect} />
+            {actions}
+          </motion.div>
+        )}
+
+        {phase === 'bulk' && (
+          <motion.div key={`bulk-${bulk[0]?.[0]?.card.id}-${bulk[1]?.[0]?.card.id}`} className="summary" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <BulkResults setId={set.info.id} packs={bulk} newIds={newIds} onInspect={onInspect} />
+            {actions}
           </motion.div>
         )}
       </AnimatePresence>
@@ -296,6 +343,7 @@ function TearablePack({ set, cover, layoutId, aura, torn, onTear }: TearProps) {
 /* ------------------------------------------------------------------------- */
 
 interface RevealProps {
+  setId: string;
   pack: PulledCard[];
   newIds: Set<string>;
   onDone: () => void;
@@ -303,17 +351,46 @@ interface RevealProps {
   onFlash: () => void;
 }
 
-function RevealStack({ pack, newIds, onDone, onShake, onFlash }: RevealProps) {
+function RevealStack({ setId, pack, newIds, onDone, onShake, onFlash }: RevealProps) {
   const [idx, setIdx] = useState(0);
   const [dir, setDir] = useState(1);
   const [flipped, setFlipped] = useState<Set<number>>(new Set());
   const [charging, setCharging] = useState(false);
-  const [showcase, setShowcase] = useState<{ tier: Tier; key: number } | null>(null);
+  const [showcase, setShowcase] = useState<{ tier: Tier; key: number; value: number } | null>(null);
+  const [profitPop, setProfitPop] = useState(0);
   const topRef = useRef<HTMLDivElement>(null);
+  const meterRef = useRef<HTMLDivElement>(null);
   const busy = useRef(false);
+  const crossed = useRef(false);
+  const celebrating = useRef(false);
 
+  const values = useMemo(() => pack.map((p) => pullPrice(setId, p)), [setId, pack]);
+  const cost = packPrice(setId);
   const cur = pack[idx];
-  const needsFlip = (i: number) => rankOf(pack[i]) >= FLIP_RANK && !flipped.has(i);
+  // Rare-by-tier OR rare-by-price cards arrive face down.
+  const needsFlip = (i: number) => (rankOf(pack[i]) >= FLIP_RANK || values[i] >= BIG_HIT_VALUE) && !flipped.has(i);
+  const isShowcase = (i: number) => rankOf(pack[i]) >= SHOWCASE_RANK || values[i] >= JACKPOT_VALUE;
+  const revealed = values.slice(0, idx).reduce((a, b) => a + b, 0) + (cur && !needsFlip(idx) ? values[idx] : 0);
+
+  // Crossing into profit is its own moment.
+  useEffect(() => {
+    if (crossed.current || revealed < cost || revealed === 0) return;
+    crossed.current = true;
+    const t = window.setTimeout(() => {
+      const c = centerOf(meterRef.current);
+      sfx.profit();
+      fx.burst({ x: c.x, y: c.y, count: 90, colors: ['#34d37a', '#b9ffd6', ...GOLD], speed: 10, kind: 'star', size: 3, gravity: 0.15, life: 1400 });
+      fx.ring(c.x, c.y, '#34d37a', 300, 700, 5);
+      if (!celebrating.current) setProfitPop((n) => n + 1);
+    }, 450);
+    return () => window.clearTimeout(t);
+  }, [revealed, cost]);
+
+  const coinFx = (v: number) => {
+    const c = centerOf(topRef.current);
+    sfx.coin();
+    fx.burst({ x: c.x, y: c.y - 40, count: v >= BIG_HIT_VALUE ? 90 : 45, colors: GOLD, speed: v >= BIG_HIT_VALUE ? 12 : 8, kind: 'star', size: 3, gravity: 0.2, spread: Math.PI * 1.2, angle: -Math.PI / 2, life: 1300 });
+  };
 
   // Card arrival effects
   useEffect(() => {
@@ -322,10 +399,14 @@ function RevealStack({ pack, newIds, onDone, onShake, onFlash }: RevealProps) {
     const t = window.setTimeout(() => {
       const c = centerOf(topRef.current);
       if (needsFlip(idx)) {
-        fx.converge('charge', c.x, c.y, TIER_STYLE[cur.card.tier].color, rank >= SHOWCASE_RANK ? 4 : 2.5, 280);
-      } else if (rank >= TIER_RANK.rare || cur.foil) {
-        sfx.reveal(rank);
-        fx.burst({ x: c.x, y: c.y, count: rank >= TIER_RANK.rare ? 50 : 22, colors: burstColors(cur.card.tier), speed: 7, kind: 'star', size: 2.5, gravity: 0.04 });
+        const color = rank >= FLIP_RANK ? TIER_STYLE[cur.card.tier].color : '#ffe066';
+        fx.converge('charge', c.x, c.y, color, isShowcase(idx) ? 4 : 2.5, 280);
+      } else {
+        if (rank >= TIER_RANK.rare || cur.foil) {
+          sfx.reveal(rank);
+          fx.burst({ x: c.x, y: c.y, count: rank >= TIER_RANK.rare ? 50 : 22, colors: burstColors(cur.card.tier), speed: 7, kind: 'star', size: 2.5, gravity: 0.04 });
+        }
+        if (values[idx] >= HIT_VALUE) window.setTimeout(() => coinFx(values[idx]), 120);
       }
     }, 180);
     return () => {
@@ -343,7 +424,7 @@ function RevealStack({ pack, newIds, onDone, onShake, onFlash }: RevealProps) {
   const dragged = useRef(false);
   const advance = (d: number) => {
     const now = performance.now();
-    if (busy.current || now - lastAdvance.current < 280) return;
+    if (busy.current || now - lastAdvance.current < 180) return;
     lastAdvance.current = now;
     setDir(d);
     sfx.whoosh();
@@ -357,21 +438,29 @@ function RevealStack({ pack, newIds, onDone, onShake, onFlash }: RevealProps) {
     sfx.charge();
     const tier = cur.card.tier;
     const rank = rankOf(cur);
+    const value = values[idx];
+    const big = isShowcase(idx);
     window.setTimeout(() => {
       fx.stopConverge('charge');
       setCharging(false);
       setFlipped((f) => new Set(f).add(idx));
       const c = centerOf(topRef.current);
       sfx.reveal(rank);
-      fx.burst({ x: c.x, y: c.y, count: rank >= SHOWCASE_RANK ? 220 : 120, colors: burstColors(tier), speed: rank >= SHOWCASE_RANK ? 16 : 11, life: 1400, size: 3.5, kind: 'spark', gravity: 0.1 });
+      fx.burst({ x: c.x, y: c.y, count: big ? 220 : 120, colors: burstColors(tier), speed: big ? 16 : 11, life: 1400, size: 3.5, kind: 'spark', gravity: 0.1 });
       fx.burst({ x: c.x, y: c.y, count: 40, colors: burstColors(tier), speed: 5, life: 1800, kind: 'star', size: 3, gravity: 0.02 });
       fx.ring(c.x, c.y, TIER_STYLE[tier].color, 420, 800, 8);
-      if (rank >= SHOWCASE_RANK) {
+      if (value >= HIT_VALUE) window.setTimeout(() => coinFx(value), 200);
+      if (big) {
+        if (value >= JACKPOT_VALUE) window.setTimeout(() => sfx.jackpot(), 150);
         window.setTimeout(() => fx.ring(c.x, c.y, '#ffffff', 600, 1000, 4), 140);
-        setShowcase({ tier, key: idx });
+        celebrating.current = true;
+        setShowcase({ tier, key: idx, value });
         onShake();
         onFlash();
-        window.setTimeout(() => setShowcase(null), 2200);
+        window.setTimeout(() => {
+          celebrating.current = false;
+          setShowcase(null);
+        }, 2200);
       }
       window.setTimeout(() => (busy.current = false), 450);
     }, 650);
@@ -395,22 +484,39 @@ function RevealStack({ pack, newIds, onDone, onShake, onFlash }: RevealProps) {
   const visible = pack.slice(idx, idx + 4);
 
   return (
-    <div className="reveal-wrap">
+    <div className={`reveal-wrap ${showcase ? "celebrating" : ""}`}>
       <div className="reveal-top">
         <span className="counter">
           {Math.min(idx + 1, pack.length)} <small>/ {pack.length}</small>
         </span>
+        <ValueMeter ref={meterRef} value={revealed} cost={cost} />
         <button className="ghost" onClick={skip}>
           Skip ⏭
         </button>
       </div>
+      <AnimatePresence>
+        {profitPop > 0 && (
+          <motion.div
+            key={profitPop}
+            className="profit-toast"
+            initial={{ opacity: 0, y: 20, scale: 0.6 }}
+            animate={{ opacity: [0, 1, 1, 0], y: [20, 0, 0, -20], scale: [0.6, 1.1, 1, 1] }}
+            transition={{ duration: 2.2, times: [0, 0.15, 0.8, 1] }}
+          >
+            ▲ IN THE GREEN!
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {showcase && (
           <motion.div key={showcase.key} className="showcase" style={vars({ '--tier': TIER_STYLE[showcase.tier].color })} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.6 } }}>
             <div className="showcase-rays" />
             <motion.div className="showcase-banner" initial={{ scale: 2.2, opacity: 0, letterSpacing: '0.6em' }} animate={{ scale: 1, opacity: 1, letterSpacing: '0.18em' }} transition={{ type: 'spring', stiffness: 140, damping: 14 }}>
-              {TIER_STYLE[showcase.tier].label}
+              {showcase.value >= JACKPOT_VALUE ? 'Jackpot' : TIER_STYLE[showcase.tier].label}
+              <motion.span className="showcase-price" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
+                {money(showcase.value)}
+              </motion.span>
             </motion.div>
           </motion.div>
         )}
@@ -468,8 +574,8 @@ function RevealStack({ pack, newIds, onDone, onShake, onFlash }: RevealProps) {
             <motion.div key={`${idx}-${needsFlip(idx)}`} className="card-caption" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
               {needsFlip(idx) ? (
                 <>
-                  <span className="pill glow" style={vars({ '--tier': TIER_STYLE[cur.card.tier].color })}>
-                    Something special…
+                  <span className="pill glow" style={vars({ '--tier': rankOf(cur) >= FLIP_RANK ? TIER_STYLE[cur.card.tier].color : '#ffe066' })}>
+                    {rankOf(cur) >= FLIP_RANK ? 'Something special…' : '💰 Something valuable…'}
                   </span>
                   <span className="caption-name">Tap to reveal</span>
                 </>
@@ -480,45 +586,13 @@ function RevealStack({ pack, newIds, onDone, onShake, onFlash }: RevealProps) {
                     {cur.foil && rankOf(cur) < TIER_RANK.rare ? ' · Foil' : ''}
                   </span>
                   {newIds.has(cur.card.id) && <span className="pill new">New</span>}
+                  <PriceTag value={values[idx]} />
                   <span className="caption-name">{cur.card.name}</span>
                 </>
               )}
             </motion.div>
           )}
         <p className="hint">{cur && needsFlip(idx) ? 'Tap the card' : 'Swipe or tap for the next card'}</p>
-      </div>
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------------- */
-
-function Summary({ pack, newIds, onInspect }: { pack: PulledCard[]; newIds: Set<string>; onInspect: (p: PulledCard) => void }) {
-  const best = pack.reduce((b, p) => (rankOf(p) > rankOf(b) ? p : b));
-  return (
-    <div className="summary-wrap">
-      <motion.h2 className="prompt" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-        Pack Results
-      </motion.h2>
-      <motion.p className="hint" initial={{ opacity: 0 }} animate={{ opacity: 0.8 }}>
-        Best pull: <b style={{ color: TIER_STYLE[best.card.tier].color }}>{best.card.name}</b> · {newIds.size} new
-      </motion.p>
-      <div className="summary-grid">
-        {pack.map((p, i) => (
-          <motion.button
-            key={i}
-            className={`summary-card r${rankOf(p)}`}
-            initial={{ opacity: 0, y: 30, rotateY: 90 }}
-            animate={{ opacity: 1, y: 0, rotateY: 0 }}
-            transition={{ delay: 0.05 * i, type: 'spring', stiffness: 200, damping: 20 }}
-            whileHover={{ y: -8, scale: 1.05, zIndex: 3 }}
-            onClick={() => onInspect(p)}
-            style={vars({ '--tier': TIER_STYLE[p.card.tier].color })}
-          >
-            <CardView card={p.card} foil={p.foil} res={300} shimmer={rankOf(p) >= TIER_RANK.epic} />
-            {newIds.has(p.card.id) && <span className="badge-new">NEW</span>}
-          </motion.button>
-        ))}
       </div>
     </div>
   );
