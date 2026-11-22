@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { rankOf, TIER_RANK } from '../lib/packs';
 import { priceOf } from '../lib/ledger';
 import { money } from '../lib/prices';
@@ -86,12 +86,22 @@ interface BulkProps {
   packs: PulledCard[][];
   newIds: Set<string>;
   onInspect: (p: PulledCard) => void;
+  title?: string;
+  /** Per-pack cost when it isn't the loose-pack price (box breaks). */
+  packCost?: number;
+  /** Box break: 24 slimmer bars, faster pacing, and `report` once every pack is in. */
+  box?: boolean;
+  report?: ReactNode;
 }
 
 const BULK_STEP_MS = 260;
+const BOX_STEP_MS = 150;
 
-export function BulkResults({ setId, packs, newIds, onInspect }: BulkProps) {
-  const priced = useMemo(() => packs.map((p) => priceOf(setId, p)), [setId, packs]);
+/** "$5" / "$123" — whole dollars so 24 labels fit under a box's bars. */
+const wholeDollars = (v: number) => (v >= 1000 ? money(v, true) : `$${Math.round(v)}`);
+
+export function BulkResults({ setId, packs, newIds, onInspect, title, packCost, box, report }: BulkProps) {
+  const priced = useMemo(() => packs.map((p) => priceOf(setId, p, undefined, packCost)), [setId, packs, packCost]);
   const total = priced.reduce((a, p) => a + p.value, 0);
   const cost = priced.reduce((a, p) => a + p.cost, 0);
   const [shown, setShown] = useState(0);
@@ -107,8 +117,8 @@ export function BulkResults({ setId, packs, newIds, onInspect }: BulkProps) {
         .flatMap((pack, pi) => pack.map((p, ci) => ({ p, v: priced[pi].values[ci], key: `${pi}-${ci}` })))
         .filter((h) => h.v >= 0.5 || TIER_RANK[h.p.card.tier] >= TIER_RANK.epic)
         .sort((a, b) => b.v - a.v)
-        .slice(0, 14),
-    [packs, priced],
+        .slice(0, box ? 21 : 14),
+    [packs, priced, box],
   );
 
   // Pop each pack's bar in sequence.
@@ -125,19 +135,19 @@ export function BulkResults({ setId, packs, newIds, onInspect }: BulkProps) {
       }
       if (p.best.value >= JACKPOT_VALUE) fx.ring(c.x, c.y, '#ffe066', 220, 700, 5);
       setShown((s) => s + 1);
-    }, shown === 0 ? 400 : BULK_STEP_MS);
+    }, shown === 0 ? 400 : box ? BOX_STEP_MS : BULK_STEP_MS);
     return () => window.clearTimeout(t);
-  }, [shown, done, priced]);
+  }, [shown, done, priced, box]);
 
   const best = hits[0];
 
   return (
     <div className="summary-wrap bulk">
       <motion.h2 className="prompt" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-        {packs.length} Pack Rip
+        {title ?? `${packs.length} Pack Rip`}
       </motion.h2>
 
-      <div className="bulk-bars" role="list" aria-label="Value of each pack">
+      <div className={`bulk-bars ${box ? 'box' : ''}`} role="list" aria-label="Value of each pack">
         {priced.map((p, i) => {
           const win = p.value >= p.cost;
           return (
@@ -152,7 +162,7 @@ export function BulkResults({ setId, packs, newIds, onInspect }: BulkProps) {
                   transition={{ type: 'spring', stiffness: 220, damping: 18 }}
                 />
               </div>
-              <span className={`bulk-val ${i < shown ? 'on' : ''} ${win ? 'good' : ''}`}>{i < shown ? money(p.value, true) : '·'}</span>
+              <span className={`bulk-val ${i < shown ? 'on' : ''} ${win ? 'good' : ''}`}>{i < shown ? (box ? wholeDollars(p.value) : money(p.value, true)) : '·'}</span>
             </div>
           );
         })}
@@ -166,6 +176,7 @@ export function BulkResults({ setId, packs, newIds, onInspect }: BulkProps) {
           <motion.p className="hint" initial={{ opacity: 0 }} animate={{ opacity: 0.85 }}>
             {priced.filter((p) => p.value >= p.cost).length} of {packs.length} packs paid for themselves · {newIds.size} new cards
           </motion.p>
+          {report}
           <h3 className="section-title">Top pulls</h3>
           <div className="summary-grid">
             {hits.map((h, i) => (

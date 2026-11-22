@@ -35,6 +35,9 @@ for (const set of sets) {
 
   const pack = prods.find((p) => p.name === `${group.name} - Booster Pack`) ?? prods.find((p) => /- Booster Pack$/.test(p.name));
   const packRow = pack ? priceBy.get(pack.productId) : null;
+  // A "Booster Display" is the 24-pack box.
+  const box = prods.find((p) => p.name === `${group.name} - Booster Display`) ?? prods.find((p) => /- Booster Display$/.test(p.name));
+  const boxRow = box ? priceBy.get(box.productId) : null;
 
   const cards = JSON.parse(readFileSync(join(dataDir, `${set.id}.json`), 'utf8'));
   const cardPrices = {};
@@ -53,9 +56,11 @@ for (const set of sets) {
   out.sets[set.id] = {
     pack: best(packRow?.Normal) ?? null,
     packProductId: pack?.productId ?? null,
+    box: best(boxRow?.Normal) ?? null,
+    boxProductId: box?.productId ?? null,
     cards: cardPrices,
   };
-  console.log(`${set.id}: ${matched}/${cards.length} cards priced, pack ${out.sets[set.id].pack ?? 'n/a'}`);
+  console.log(`${set.id}: ${matched}/${cards.length} cards priced, pack ${out.sets[set.id].pack ?? 'n/a'}, box ${out.sets[set.id].box ?? 'n/a'}`);
 }
 
 writeFileSync(join(dataDir, 'prices.json'), JSON.stringify(out));

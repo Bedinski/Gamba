@@ -13,10 +13,10 @@ export interface LedgerEntry {
 
 export const LEDGER_CAP = 10_000;
 
-export function priceOf(setId: string, pack: PulledCard[], book: PriceBook = PRICES) {
+/** Value a pack. `cost` defaults to the loose-pack price; box breaks pass the box price / 24. */
+export function priceOf(setId: string, pack: PulledCard[], book: PriceBook = PRICES, cost = packPrice(setId, book)) {
   const values = pack.map((p) => pullPrice(setId, p, book));
   const value = round2(values.reduce((a, b) => a + b, 0));
-  const cost = packPrice(setId, book);
   let bi = 0;
   values.forEach((v, i) => {
     if (v > values[bi] || (v === values[bi] && TIER_RANK[pack[i].card.tier] > TIER_RANK[pack[bi].card.tier])) bi = i;
@@ -31,8 +31,8 @@ export function priceOf(setId: string, pack: PulledCard[], book: PriceBook = PRI
   };
 }
 
-export function entryFor(setId: string, pack: PulledCard[], t = Date.now(), book: PriceBook = PRICES): LedgerEntry {
-  const { value, cost, best } = priceOf(setId, pack, book);
+export function entryFor(setId: string, pack: PulledCard[], t = Date.now(), book: PriceBook = PRICES, packCost?: number): LedgerEntry {
+  const { value, cost, best } = priceOf(setId, pack, book, packCost ?? packPrice(setId, book));
   return { t, set: setId, cost, value, best };
 }
 

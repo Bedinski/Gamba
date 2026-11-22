@@ -1,0 +1,286 @@
+/* Booster box break: the sealed box, its 24 bars, and the box report. */
+
+.choose-bulk {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+.secondary.box-btn {
+  border-color: color-mix(in srgb, var(--c2) 60%, transparent);
+  box-shadow: 0 0 22px color-mix(in srgb, var(--c2) 18%, transparent);
+}
+.secondary.box-btn:hover {
+  background: color-mix(in srgb, var(--c2) 14%, transparent);
+}
+
+/* ------------------------------------------------------------- the sealed box */
+
+.box-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 0;
+}
+.booster-box {
+  --box-w: min(360px, 84vw, calc((100dvh - 330px) * 1.25));
+  position: relative;
+  width: var(--box-w);
+  aspect-ratio: 1.25;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  filter: drop-shadow(0 26px 34px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 26px color-mix(in srgb, var(--c2) 30%, transparent));
+}
+.booster-box.opening {
+  cursor: default;
+}
+
+.box-packs {
+  position: absolute;
+  inset: 0 0 10% 0;
+  z-index: 1;
+  pointer-events: none;
+}
+.box-pack {
+  --pack-w: calc(var(--box-w) * 0.3);
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  margin-left: calc(var(--box-w) * -0.15);
+}
+.box-pack .pack {
+  filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.5));
+}
+
+.box-lid {
+  position: absolute;
+  z-index: 3;
+  top: 12%;
+  left: -3%;
+  right: -3%;
+  height: 17%;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--c1) 85%, white), var(--c1) 30%, color-mix(in srgb, var(--c1) 45%, black));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 6px 12px rgba(0, 0, 0, 0.45);
+}
+.box-lid-logo {
+  font-family: 'Cinzel', serif;
+  font-weight: 900;
+  font-size: calc(var(--box-w) * 0.075);
+  letter-spacing: 0.12em;
+  color: color-mix(in srgb, var(--c0) 80%, black);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.box-front {
+  position: absolute;
+  z-index: 2;
+  inset: 24% 0 0 0;
+  overflow: hidden;
+  border-radius: 6px 6px 12px 12px;
+  border: 1px solid color-mix(in srgb, var(--c1) 55%, transparent);
+  background: linear-gradient(160deg, var(--c0), #0b0818 75%);
+}
+.box-front img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 22%;
+  opacity: 0.6;
+}
+.box-front-shade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.45), transparent 30%, transparent 45%, rgba(6, 4, 16, 0.92) 92%),
+    radial-gradient(circle at 50% 120%, color-mix(in srgb, var(--c2) 45%, transparent), transparent 60%);
+}
+.box-label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 9%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.box-set {
+  font-family: 'Cinzel', serif;
+  font-weight: 900;
+  font-size: calc(var(--box-w) * 0.1);
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: #fff;
+  text-shadow:
+    0 0 14px var(--c2),
+    0 2px 0 rgba(0, 0, 0, 0.6);
+}
+.box-meta {
+  font-size: calc(var(--box-w) * 0.034);
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--c1);
+}
+.box-price {
+  font-size: 0.95rem;
+  text-align: center;
+  padding: 0 16px;
+}
+.box-price .muted {
+  color: var(--muted);
+}
+
+/* ------------------------------------------------------------- 24 bars */
+
+.bulk-bars.box {
+  width: min(820px, 100%);
+  gap: 4px;
+}
+.bulk-bars.box .bulk-val {
+  font-size: 0.6rem;
+}
+
+/* ------------------------------------------------------------- box report */
+
+.box-report {
+  width: min(640px, 100%);
+  margin-top: 6px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+.box-report .section-title {
+  margin: 0;
+  text-align: center;
+}
+
+.box-luck {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.box-luck-label {
+  text-align: center;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+.box-luck-label.good {
+  color: var(--good);
+}
+.box-luck-track {
+  position: relative;
+  height: 10px;
+  border-radius: 99px;
+  background: linear-gradient(90deg, rgba(255, 90, 95, 0.35), rgba(255, 255, 255, 0.12) 50%, rgba(52, 211, 122, 0.45));
+}
+.box-luck-mid {
+  position: absolute;
+  left: 50%;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  background: rgba(255, 255, 255, 0.35);
+}
+.box-luck-dot {
+  position: absolute;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle at 35% 30%, #fff, var(--gold-coin) 55%, #b07d2c);
+  box-shadow: 0 0 12px rgba(255, 224, 102, 0.7);
+}
+.box-luck-scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.box-tiers {
+  display: grid;
+  grid-template-columns: repeat(var(--n, 5), 1fr);
+  gap: 10px;
+}
+.box-tier {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 6px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--tier) 40%, transparent);
+  background: color-mix(in srgb, var(--tier) 9%, transparent);
+  text-align: center;
+}
+.box-tier.up {
+  box-shadow: 0 0 18px color-mix(in srgb, var(--tier) 30%, transparent);
+}
+.box-tier-n {
+  font-size: 1.8rem;
+  font-weight: 900;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--tier);
+}
+.box-tier-name {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.box-tier-exp {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+.box-tier.up .box-tier-exp {
+  color: var(--good);
+}
+.box-tier.down .box-tier-exp {
+  color: var(--bad);
+}
+.box-note {
+  margin: 0;
+  font-size: 0.72rem;
+  text-align: center;
+  opacity: 0.75;
+}
+
+/* Phones: two rows of twelve bars. */
+@media (max-width: 760px) {
+  .bulk-bars.box {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-template-rows: 1fr 1fr;
+    height: 300px;
+    gap: 12px 4px;
+  }
+  .box-report {
+    padding: 14px 12px;
+  }
+  .box-tiers {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .box-tier-n {
+    font-size: 1.5rem;
+  }
+}

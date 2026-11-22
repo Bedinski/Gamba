@@ -10,17 +10,20 @@ import { centerOf, fx } from '../lib/fx';
 import { sfx } from '../lib/sound';
 import { CardBack, CardView } from './CardView';
 import { PackArt } from './PackArt';
-import { packPrice, pullPrice, money } from '../lib/prices';
+import { boxPrice, packPrice, pullPrice, money } from '../lib/prices';
+import { boxPackCost, boxValue } from '../lib/box';
+import { PACKS_PER_BOX } from '../lib/packs';
 import { BIG_HIT_VALUE, HIT_VALUE, JACKPOT_VALUE } from '../lib/hype';
 import { PriceTag, ValueMeter } from './Money';
 import { BulkResults, Summary } from './Results';
+import { BoxReady, BoxReport } from './Box';
 
 const FLING = {
   // pointerEvents: a card flying away must not swallow quick taps meant for the next one.
   exit: (d: number) => ({ x: d * 700, y: -120, rotate: d * 28, opacity: 0, pointerEvents: 'none' as const, transition: { duration: 0.42, ease: [0.3, 0, 0.6, 1] } }),
 };
 
-type Phase = 'choose' | 'ready' | 'tearing' | 'reveal' | 'summary' | 'bulk';
+type Phase = 'choose' | 'ready' | 'tearing' | 'reveal' | 'summary' | 'bulk' | 'boxReady' | 'box';
 
 export const BULK_COUNT = 10;
 const GOLD = ['#ffe066', '#ffd27a', '#fff3c8', '#ffffff'];
@@ -28,7 +31,7 @@ const GOLD = ['#ffe066', '#ffd27a', '#fff3c8', '#ffffff'];
 interface Props {
   set: LoadedSet;
   collection: Collection;
-  onRecord: (setId: string, pack: PulledCard[]) => void;
+  onRecord: (setId: string, pack: PulledCard[], cost?: number) => void;
   onExit: () => void;
   onCollection: () => void;
   onStats: () => void;
@@ -51,6 +54,7 @@ function tierOfBest(pack: PulledCard[]): Tier {
 export function Opening({ set, collection, onRecord, onExit, onCollection, onStats, onInspect }: Props) {
   const [pack, setPack] = useState<PulledCard[]>(() => roll(set));
   const [bulk, setBulk] = useState<PulledCard[][]>([]);
+  const [runId, setRunId] = useState(0);
   const [phase, setPhase] = useState<Phase>('choose');
   const [chosen, setChosen] = useState(0);
   const [newIds, setNewIds] = useState<Set<string>>(new Set());
@@ -110,21 +114,48 @@ export function Opening({ set, collection, onRecord, onExit, onCollection, onSta
     setFlash((f) => f + 1);
     setShake((s) => s + 1);
     setBulk(packs);
+    setRunId((n) => n + 1);
     setPhase('bulk');
   };
 
+  const breakBox = () => {
+    const packs = Array.from({ length: PACKS_PER_BOX }, () => roll(set));
+    const perPack = boxPackCost(set.info.id);
+    setNewIds(newCardIds(collection, set.info.id, packs.flat()));
+    for (const p of packs) onRecord(set.info.id, p, perPack);
+    setFlash((f) => f + 1);
+    setShake((s) => s + 1);
+    setBulk(packs);
+    setRunId((n) => n + 1);
+    setPhase('box');
+  };
+
   const cost = packPrice(set.info.id);
+  const boxCost = boxPrice(set.info.id);
   const actions = (
     <motion.div className="actions" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0, transition: { delay: 1.6 } }}>
-      <button className="primary" onClick={again}>
-        Open Another
-      </button>
+      {phase === 'box' ? (
+        <>
+          <button className="primary" onClick={() => setPhase('boxReady')}>
+            📦 Break Another Box
+          </button>
+          <button className="secondary" onClick={again}>
+            Open a Pack
+          </button>
+        </>
+      ) : (
+        <button className="primary" onClick={again}>
+          Open Another
+        </button>
+      )}
       <button className="secondary bolt" onClick={ripBulk}>
         ⚡ Rip {BULK_COUNT} · {money(cost * BULK_COUNT)}
       </button>
-      <button className="secondary" onClick={onStats}>
-        📈 Stats
-      </button>
+      {phase !== 'box' && (
+        <button className="secondary box-btn" onClick={() => setPhase('boxReady')}>
+          📦 Box · {money(boxCost)}
+        </button>
+      )}
     </motion.div>
   );
 
@@ -179,9 +210,14 @@ export function Opening({ set, collection, onRecord, onExit, onCollection, onSta
             <p className="hint">
               7 Commons · 3 Uncommons · 1 Foil · 2 Rare or better · 1 Rune · <b className="gold">{money(cost)}</b> per pack
             </p>
-            <button className="secondary bolt" onClick={ripBulk}>
-              ⚡ Rip {BULK_COUNT} packs at once · {money(cost * BULK_COUNT)}
-            </button>
+            <div className="choose-bulk">
+              <button className="secondary bolt" onClick={ripBulk}>
+                ⚡ Rip {BULK_COUNT} packs · {money(cost * BULK_COUNT)}
+              </button>
+              <button className="secondary box-btn" onClick={() => setPhase('boxReady')}>
+                📦 Break a box · {money(boxCost)}
+              </button>
+            </div>
           </motion.div>
         )}
 
@@ -205,8 +241,30 @@ export function Opening({ set, collection, onRecord, onExit, onCollection, onSta
         )}
 
         {phase === 'bulk' && (
-          <motion.div key={`bulk-${bulk[0]?.[0]?.card.id}-${bulk[1]?.[0]?.card.id}`} className="summary" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div key={`bulk-${runId}`} className="summary" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <BulkResults setId={set.info.id} packs={bulk} newIds={newIds} onInspect={onInspect} />
+            {actions}
+          </motion.div>
+        )}
+
+        {phase === 'boxReady' && (
+          <motion.div key="boxReady" className="ready" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.2 } }}>
+            <BoxReady set={set} covers={covers} onOpen={breakBox} />
+          </motion.div>
+        )}
+
+        {phase === 'box' && (
+          <motion.div key={`box-${runId}`} className="summary" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <BulkResults
+              setId={set.info.id}
+              packs={bulk}
+              newIds={newIds}
+              onInspect={onInspect}
+              title="Box Break"
+              packCost={boxPackCost(set.info.id)}
+              box
+              report={<BoxReport set={set} packs={bulk} value={boxValue(set.info.id, bulk)} />}
+            />
             {actions}
           </motion.div>
         )}

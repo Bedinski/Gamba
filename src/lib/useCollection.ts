@@ -29,10 +29,10 @@ export function useCollection() {
   useEffect(() => write(KEY, collection), [collection]);
   useEffect(() => write(LEDGER_KEY, ledger), [ledger]);
 
-  /** Add a pack to the collection and the profit ledger (priced at today's market). */
-  const record = useCallback((setId: string, pack: PulledCard[]) => {
+  /** Add a pack to the collection and the profit ledger (priced at today's market). `cost` overrides the pack price (box breaks). */
+  const record = useCallback((setId: string, pack: PulledCard[], cost?: number) => {
     setCollection((c) => addPack(c, setId, pack));
-    setLedger((l) => appendEntry(l, entryFor(setId, pack)));
+    setLedger((l) => appendEntry(l, entryFor(setId, pack, Date.now(), undefined, cost)));
   }, []);
 
   const resetLedger = useCallback(() => setLedger([]), []);

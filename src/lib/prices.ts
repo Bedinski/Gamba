@@ -1,5 +1,6 @@
 import pricesJson from '../data/prices.json';
 import type { PulledCard } from './types';
+import { PACKS_PER_BOX } from './packs';
 
 /** [normal market, foil market, TCGplayer productId] */
 export type PriceRow = [number | null, number | null, number];
@@ -7,6 +8,9 @@ export type PriceRow = [number | null, number | null, number];
 export interface SetPrices {
   pack: number | null;
   packProductId: number | null;
+  /** Sealed 24-pack booster display. */
+  box?: number | null;
+  boxProductId?: number | null;
   cards: Record<string, PriceRow>;
 }
 
@@ -33,7 +37,8 @@ export function validatePriceBook(raw: unknown): PriceBook {
       const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : null);
       cards[cid] = [num(row[0]), num(row[1]), Number(row[2]) || 0];
     }
-    sets[id] = { pack: typeof s.pack === 'number' && s.pack > 0 ? s.pack : null, packProductId: s.packProductId ?? null, cards };
+    const positive = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null);
+    sets[id] = { pack: positive(s.pack), packProductId: s.packProductId ?? null, box: positive(s.box), boxProductId: s.boxProductId ?? null, cards };
   }
   return { updatedAt: String(book.updatedAt ?? ''), source: String(book.source ?? ''), sets };
 }
@@ -42,6 +47,11 @@ export const PRICES = validatePriceBook(pricesJson);
 
 export function packPrice(setId: string, book: PriceBook = PRICES): number {
   return book.sets[setId]?.pack ?? FALLBACK_PACK_PRICE;
+}
+
+/** Sealed booster box price; 24 loose packs when the box has no market price. */
+export function boxPrice(setId: string, book: PriceBook = PRICES): number {
+  return book.sets[setId]?.box ?? Math.round(packPrice(setId, book) * PACKS_PER_BOX * 100) / 100;
 }
 
 /** Market value of one card; foils use the foil price when there is one. */
